@@ -193,7 +193,7 @@ app.post('/login', (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      JWT_SECRET, { expiresIn: '1h' }
+      JWT_SECRET, { expiresIn: '24h' }
     );
     res.json({ message: 'Kirish muvaffaqiyatli', token, role: user.role });
   });
@@ -445,6 +445,29 @@ app.get('/user/orders', authenticateToken, (req, res) => {
   });
 });
 
+// Status ustuni bor-yo‘qligini tekshirib, yo‘q bo‘lsa qo‘shadi:
+db.get("PRAGMA table_info(orders);", [], (err, columns) => {
+  if (err) {
+    console.error("orders jadvali tekshirilmadi:", err.message);
+  } else {
+    // status ustuni bor-yo'qligini aniqlash
+    db.all("PRAGMA table_info(orders);", [], (err, columns) => {
+      if (err) {
+        console.error("orders jadvali tekshirilmadi:", err.message);
+      } else {
+        const hasStatus = columns.some(col => col.name === 'status');
+        if (!hasStatus) {
+          db.run("ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'pending';", [], (err) => {
+            if (err) console.error("status ustunini qo'shishda xatolik:", err.message);
+            else console.log("status ustuni qo'shildi!");
+          });
+        }
+      }
+    });
+  }
+});
+
+
 // ORDER CONFIRM (Tasdiqlash) API
 app.put('/orders/:id/confirm', authenticateToken, requireRole(['manager', 'fixer']), (req, res) => {
   const orderId = req.params.id;
@@ -458,6 +481,80 @@ app.put('/orders/:id/confirm', authenticateToken, requireRole(['manager', 'fixer
     }
   );
 });
+
+// Manager buyurtma o‘chirish
+app.delete('/manager/orders/:id', authenticateToken, requireRole(['manager']), (req, res) => {
+  const orderId = req.params.id;
+
+  db.run('DELETE FROM orders WHERE id = ?', [orderId], function (err) {
+    if (err) {
+      return res.status(500).json({ message: 'Buyurtmani o‘chirishda xatolik', error: err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ message: 'Buyurtma topilmadi yoki allaqachon o‘chirilgan' });
+    }
+
+    res.json({ message: 'Buyurtma muvaffaqiyatli o‘chirildi', orderId });
+  });
+});
+
+// Statistics API Endpoint with Diagram Data
+app.get('/api/statistics', authenticateToken, requireRole(['manager', 'fixer']), (req, res) => {
+  db.serialize(() => {
+    db.get('SELECT COUNT(*) AS totalOrders FROM orders', [], (err, totalOrdersRow) => {
+      if (err) return res.status(500).json({ message: 'Xatolik', error: err.message });
+
+      db.all('SELECT status, COUNT(*) AS count FROM orders GROUP BY status', [], (err, statusRows) => {
+        if (err) return res.status(500).json({ message: 'Xatolik', error: err.message });
+
+        const statistics = {
+          totalOrders: totalOrdersRow.totalOrders,
+          byStatus: statusRows
+        };
+
+        res.json(statistics);
+      });
+    });
+  });
+});
+
+
+// Statistics API Endpoint
+app.get('/statistics', authenticateToken, requireRole(['manager', 'fixer']), (req, res) => {
+  db.serialize(() => {
+    db.get('SELECT COUNT(*) AS totalOrders FROM orders', [], (err, totalOrdersRow) => {
+      if (err) return res.status(500).json({ message: 'Xatolik', error: err.message });
+
+      db.get('SELECT COUNT(*) AS confirmedOrders FROM orders WHERE status = "confirmed"', [], (err, confirmedOrdersRow) => {
+        if (err) return res.status(500).json({ message: 'Xatolik', error: err.message });
+
+        db.get('SELECT COUNT(*) AS pendingOrders FROM orders WHERE status = "pending"', [], (err, pendingOrdersRow) => {
+          if (err) return res.status(500).json({ message: 'Xatolik', error: err.message });
+
+          db.get('SELECT COUNT(*) AS fixedOrders FROM orders WHERE status = "fixed"', [], (err, fixedOrdersRow) => {
+            if (err) return res.status(500).json({ message: 'Xatolik', error: err.message });
+
+            db.get('SELECT COUNT(*) AS canceledOrders FROM orders WHERE status = "canceled"', [], (err, canceledOrdersRow) => {
+              if (err) return res.status(500).json({ message: 'Xatolik', error: err.message });
+
+              const statistics = {
+                totalOrders: totalOrdersRow.totalOrders,
+                confirmedOrders: confirmedOrdersRow.confirmedOrders,
+                pendingOrders: pendingOrdersRow.pendingOrders,
+                fixedOrders: fixedOrdersRow.fixedOrders,
+                canceledOrders: canceledOrdersRow.canceledOrders
+              };
+
+              res.json(statistics);
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
+
 
 // Serverni ishga tushurish
 app.listen(PORT, () => {
