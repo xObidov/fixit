@@ -57,7 +57,8 @@ db.run(`
     timeon TEXT,
     userconfirm TEXT,
     userstatus TEXT DEFAULT 'waiting',
-    extra TEXT           -- <<<<==== YANGI QO‘SHILGAN USTUN
+    FOREIGN KEY (userId) REFERENCES users(id)
+
   )
 `);
 });
