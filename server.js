@@ -58,6 +58,11 @@ db.serialize(() => {
   `);
 });
 
+db.run("ALTER TABLE orders ADD COLUMN userconfirm TEXT;");
+db.run("ALTER TABLE orders ADD COLUMN cost TEXT;");
+db.run("ALTER TABLE orders ADD COLUMN timeon TEXT;");
+db.run("ALTER TABLE orders ADD COLUMN userstatus TEXT DEFAULT 'waiting';");
+
 // db.run('ALTER TABLE orders ADD COLUMN userstatus TEXT DEFAULT waiting');
 
 // ALTER TABLE orders ADD COLUMN userstatus TEXT DEFAULT 'waiting';
