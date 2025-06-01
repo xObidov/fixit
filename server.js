@@ -41,27 +41,29 @@ db.serialize(() => {
     )
   `);
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS orders (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      userId INTEGER NOT NULL,
-      description TEXT NOT NULL,
-      phone TEXT,
-      serviceTime TEXT,
-      customerType TEXT,
-      name TEXT,
-      district TEXT,
-      status TEXT DEFAULT 'pending',   -- yangi ustun
-      createdAt TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (userId) REFERENCES users(id)
-    )
-  `);
+db.run(`
+  CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER NOT NULL,
+    description TEXT NOT NULL,
+    phone TEXT,
+    serviceTime TEXT,
+    customerType TEXT,
+    name TEXT,
+    district TEXT,
+    createdAt TEXT DEFAULT (datetime('now')),
+    status TEXT DEFAULT 'pending',
+    cost TEXT,
+    timeon TEXT,
+    userconfirm TEXT,
+    userstatus TEXT DEFAULT 'waiting',
+    extra TEXT           -- <<<<==== YANGI QO‘SHILGAN USTUN
+  )
+`);
 });
 
-db.run("ALTER TABLE orders ADD COLUMN userconfirm TEXT;");
-db.run("ALTER TABLE orders ADD COLUMN cost TEXT;");
-db.run("ALTER TABLE orders ADD COLUMN timeon TEXT;");
-db.run("ALTER TABLE orders ADD COLUMN userstatus TEXT DEFAULT 'waiting';");
+
+
 
 // db.run('ALTER TABLE orders ADD COLUMN userstatus TEXT DEFAULT waiting');
 
