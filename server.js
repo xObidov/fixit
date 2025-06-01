@@ -64,6 +64,43 @@ db.run(`
 
 
 
+// MIGRATION: orders jadvaliga ustunlar yo‘q bo‘lsa, qo‘shadi
+const extraColumns = [
+  { name: "cost", type: "TEXT" },
+  { name: "timeon", type: "TEXT" },
+  { name: "userconfirm", type: "TEXT" },
+  { name: "userstatus", type: "TEXT DEFAULT 'waiting'" },
+  { name: "extra", type: "TEXT" }
+];
+
+db.all("PRAGMA table_info(orders);", [], (err, columns) => {
+  if (err) {
+    console.error("orders jadvali tekshirilmadi:", err.message);
+  } else {
+    extraColumns.forEach(col => {
+      const exists = columns.some(c => c.name === col.name);
+      if (!exists) {
+        db.run(
+          `ALTER TABLE orders ADD COLUMN ${col.name} ${col.type};`,
+          (err) => {
+            if (err) {
+              if (err.message.includes("duplicate column name")) {
+                console.log(`⚠️  '${col.name}' ustuni allaqachon mavjud.`);
+              } else {
+                console.error(`❌ '${col.name}' ustunini qo'shishda xatolik:`, err.message);
+              }
+            } else {
+              console.log(`✅ '${col.name}' ustuni orders jadvaliga qo'shildi!`);
+            }
+          }
+        );
+      } else {
+        console.log(`ℹ️  '${col.name}' ustuni orders jadvalida allaqachon bor.`);
+      }
+    });
+  }
+});
+
 
 // db.run('ALTER TABLE orders ADD COLUMN userstatus TEXT DEFAULT waiting');
 
